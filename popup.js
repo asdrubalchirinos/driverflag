@@ -1,3 +1,9 @@
+/**
+ * El popup NO lee la URL de la pestaña.
+ * En Manifest V3, chrome.tabs.query no incluye tab.url sin el permiso
+ * "tabs" o "activeTab". Pedir eso no hace falta: el content script, que
+ * solo corre en x.com, escribe el estado en chrome.storage y aquí lo leemos.
+ */
 const toggle = document.getElementById("toggle");
 const estado = document.getElementById("estado");
 const detalle = document.getElementById("detalle");
@@ -12,81 +18,61 @@ function pintar(datos) {
     return;
   }
 
-  if (!datos.enX) {
+  if (!datos.paginaX) {
     estado.className = "estado aviso";
-    estado.textContent = "Abre x.com para detectar la cuenta.";
-    detalle.textContent = "Solo funciona en x.com o twitter.com.";
-    return;
-  }
-
-  if (!datos.cuenta) {
-    estado.className = "estado aviso";
-    estado.textContent = "No pude detectar la cuenta de X.";
+    estado.textContent = "Aún no me he conectado a X.";
     detalle.textContent =
-      "Si no se ve el menú lateral o el perfil, no inserto banderas (por seguridad).";
+      "Si ya estás en x.com: ve a chrome://extensions, pulsa recargar en DriverFlag y luego recarga la pestaña de X.";
     return;
   }
 
-  if (datos.coincide) {
+  if (!datos.cuentaDetectada) {
+    estado.className = "estado aviso";
+    estado.textContent = "Estoy en X, pero no veo la cuenta.";
+    detalle.textContent =
+      "En x.com: clic derecho → Inspeccionar → Consola. Busca mensajes [DriverFlag]. Si no sale ninguno, recarga la pestaña.";
+    return;
+  }
+
+  const cuenta = String(datos.cuentaDetectada).replace(/^@/, "");
+  const permitida = String(datos.cuentaPermitida || "maquinasypilotos").replace(/^@/, "");
+  const coincide = cuenta.toLowerCase() === permitida.toLowerCase();
+
+  if (coincide) {
     estado.className = "estado ok";
-    estado.textContent = "Activo para @" + datos.cuenta + ".";
+    estado.textContent = "Activo para @" + cuenta + ".";
     detalle.textContent = "Al escribir un nombre de piloto se añadirá su bandera.";
     return;
   }
 
   estado.className = "estado aviso";
-  estado.textContent = "Cuenta detectada: @" + datos.cuenta + ".";
+  estado.textContent = "Cuenta detectada: @" + cuenta + ".";
   detalle.textContent =
-    "Solo actúa con @" + (datos.permitida || "maquinasypilotos") + ". Cambia de cuenta o edita la constante en content.js.";
+    "Solo actúa con @" + permitida + ". Cambia de cuenta o edita la constante en content.js.";
 }
 
-async function leerEstado() {
-  const guardado = await chrome.storage.local.get({
-    activado: true,
-    cuentaDetectada: null,
-    cuentaPermitida: "maquinasypilotos"
-  });
-
-  const info = {
-    activado: guardado.activado,
-    cuenta: guardado.cuentaDetectada,
-    permitida: guardado.cuentaPermitida,
-    coincide: false,
-    enX: false
-  };
-
-  const pestañas = await chrome.tabs.query({ active: true, currentWindow: true });
-  const tab = pestañas[0];
-  const url = tab && tab.url ? tab.url : "";
-  info.enX = /https:\/\/(x|twitter)\.com\//.test(url);
-
-  if (info.enX && tab.id) {
-    try {
-      const resp = await chrome.tabs.sendMessage(tab.id, { tipo: "estado" });
-      if (resp) {
-        info.cuenta = resp.cuenta;
-        info.permitida = resp.permitida;
-        info.coincide = !!resp.coincide;
-        info.activado = resp.activado;
-      }
-    } catch (e) {
-      // El content script aún no está listo (página a medias o no es X).
+function leerEstado() {
+  chrome.storage.local.get(
+    {
+      activado: true,
+      paginaX: false,
+      cuentaDetectada: null,
+      cuentaPermitida: "maquinasypilotos"
+    },
+    function (datos) {
+      pintar(datos);
     }
-  }
-
-  if (!info.coincide && info.cuenta && info.permitida) {
-    info.coincide =
-      String(info.cuenta).replace(/^@/, "").toLowerCase() ===
-      String(info.permitida).replace(/^@/, "").toLowerCase();
-  }
-
-  pintar(info);
+  );
 }
 
 toggle.addEventListener("change", function () {
   chrome.storage.local.set({ activado: toggle.checked }, function () {
     leerEstado();
   });
+});
+
+chrome.storage.onChanged.addListener(function (cambios, area) {
+  if (area === "local") leerEstado();
 });
 
 leerEstado();
