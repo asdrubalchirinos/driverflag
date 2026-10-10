@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "DriverFlag",
+  "version": "1.0.0",
+  "description": "Inserta la bandera del país después del nombre de un piloto de F1 al escribir un post en X.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DriverFlag",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["pilotos.js", "matching.js", "insertar.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

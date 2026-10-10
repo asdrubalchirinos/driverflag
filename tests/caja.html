@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>DriverFlag – prueba de inserción</title>
+    <style>
+      body { font-family: sans-serif; padding: 16px; }
+      .caja {
+        min-height: 80px;
+        border: 1px solid #333;
+        padding: 8px;
+        white-space: pre-wrap;
+      }
+      #log { white-space: pre-wrap; font-family: monospace; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="caja"
+      class="public-DraftEditor-content"
+      data-testid="tweetTextarea_0"
+      role="textbox"
+      contenteditable="true"
+    ></div>
+    <pre id="log"></pre>
+    <script src="../pilotos.js"></script>
+    <script src="../matching.js"></script>
+    <script src="../insertar.js"></script>
+    <script>
+      const logEl = document.getElementById("log");
+      const caja = document.getElementById("caja");
+      const dicc = construirDiccionarios(PILOTOS);
+      const resultados = [];
+
+      function log(linea) {
+        resultados.push(linea);
+        logEl.textContent = resultados.join("\n");
+      }
+
+      function textoDeCaja() {
+        return caja.innerText.replace(/\u00a0/g, " ");
+      }
+
+      function escribirComoUsuario(texto) {
+        caja.focus();
+        ponerCursorAlFinal(caja);
+        return insertarTextoComoUsuario(texto);
+      }
+
+      function aplicarSiToca() {
+        const texto = textoAntesDelCursor(caja);
+        const decision = analizarTexto(texto, dicc);
+        if (!decision) return;
+        if (decision.accion === "mover") {
+          borrarUltimaAparicion(caja, " " + decision.bandera);
+          ponerCursorAlFinal(caja);
+        }
+        insertarBanderaTrasNombre(decision.bandera);
+      }
+
+      function caso(nombre, pasos, esperado) {
+        caja.focus();
+        document.execCommand("selectAll", false, null);
+        document.execCommand("delete", false, null);
+        pasos();
+        const obtenido = textoDeCaja();
+        const bien = obtenido === esperado;
+        log((bien ? "OK   " : "FALLO ") + nombre);
+        if (!bien) {
+          log("      esperado: " + JSON.stringify(esperado));
+          log("      obtenido: " + JSON.stringify(obtenido));
+        }
+        return bien;
+      }
+
+      let bien = 0;
+      let mal = 0;
+
+      function contar(ok) {
+        if (ok) bien++;
+        else mal++;
+      }
+
+      contar(caso("Hamilton + espacio", function () {
+        escribirComoUsuario("Hamilton ");
+        aplicarSiToca();
+      }, "Hamilton 🇬🇧 "));
+
+      contar(caso("Lewis Hamilton", function () {
+        escribirComoUsuario("Lewis ");
+        aplicarSiToca();
+        escribirComoUsuario("Hamilton ");
+        aplicarSiToca();
+      }, "Lewis Hamilton 🇬🇧 "));
+
+      contar(caso("no duplicar", function () {
+        escribirComoUsuario("Hamilton ");
+        aplicarSiToca();
+        aplicarSiToca();
+      }, "Hamilton 🇬🇧 "));
+
+      contar(caso("coma", function () {
+        escribirComoUsuario("Carlos,");
+        aplicarSiToca();
+      }, "Carlos 🇪🇸,"));
+
+      contar(caso("Ctrl+Z quita la bandera", function () {
+        escribirComoUsuario("Norris ");
+        aplicarSiToca();
+        document.execCommand("undo", false, null);
+      }, "Norris "));
+
+      const resumen = bien + " bien, " + mal + " mal";
+      log("");
+      log(resumen);
+      document.title = mal === 0 ? "PASS " + resumen : "FAIL " + resumen;
+      document.body.setAttribute("data-resultado", mal === 0 ? "PASS" : "FAIL");
+      document.body.setAttribute("data-resumen", resumen);
+    </script>
+  </body>
+</html>
