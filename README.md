@@ -19,7 +19,14 @@ No llama a internet, no tiene anuncios y solo pide el permiso `storage` para rec
 5. Entra en [x.com](https://x.com) con la cuenta **@maquinasypilotos**.
 6. Escribe un post de prueba: `Hamilton ` y debería aparecer 🇬🇧.
 
-Si actualizas los archivos, vuelve a `chrome://extensions` y pulsa el botón de recargar en DriverFlag.
+Si actualizas los archivos (o te dicen que recargues):
+
+1. Abre `chrome://extensions`.
+2. En la tarjeta **DriverFlag**, pulsa el icono de recargar (círculo).
+3. Vuelve a la pestaña de **x.com** y recárgala (F5 o Cmd+R).
+4. Para ver si está viva: en x.com, clic derecho → **Inspeccionar** → pestaña **Consola**. Debe aparecer `[DriverFlag] arrancó en https://x.com/...`.
+
+Sin recargar la pestaña de X, Chrome sigue usando el script viejo.
 
 ## Cómo se usa
 
@@ -73,7 +80,21 @@ X no nos dice oficialmente quién está logueado. DriverFlag mira el DOM de la p
 
 Si no encuentra ninguno (ventana muy estrecha, X cambió el diseño, aún no cargó la página), **no inserta nada**. Es a propósito: mejor quedarse quieto que poner banderas en otra cuenta.
 
+El popup no mira la URL de la pestaña (eso pediría más permisos). El script de x.com escribe en `chrome.storage` si está en X y qué cuenta vio; el popup solo lee eso.
+
 Cuando cambias de cuenta en X, vuelve a mirar. Si no es @maquinasypilotos, no hace nada.
+
+## Si el popup dice que no está en X, o no salen banderas
+
+1. `chrome://extensions` → recargar DriverFlag.
+2. Recarga la pestaña de x.com.
+3. Abre el popup otra vez: debería decir “Activo para @maquinasypilotos” o, si no ve la cuenta, un aviso distinto.
+4. Consola de x.com (Inspeccionar → Consola), busca `[DriverFlag]`:
+   - `arrancó en …` → el script está inyectado.
+   - `cuenta detectada: @… (activa)` → debería insertar banderas.
+   - `no inserto: la cuenta no es @maquinasypilotos` → estás con otra cuenta.
+   - `inserción: …` → acaba de poner una bandera.
+   - Si no hay ningún `[DriverFlag]`, el script no corre: revisa que la extensión esté activa y que la URL sea `https://x.com/...`.
 
 ## Cómo probar que la lógica funciona
 
