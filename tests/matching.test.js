@@ -38,6 +38,8 @@ function igual(obtenido, esperado, titulo) {
 console.log("\nDriverFlag – pruebas de coincidencia\n");
 
 igual(tipear("Hamilton ", dicc), "Hamilton 🇬🇧 ", "Hamilton → bandera británica");
+igual(tipear("McLaren ", dicc), "McLaren 🧡 ", "McLaren → corazón naranja");
+igual(tipear("mclaren ", dicc), "mclaren 🧡 ", "McLaren ignora mayúsculas");
 igual(tipear("Lewis Hamilton ", dicc), "Lewis Hamilton 🇬🇧 ", "Lewis Hamilton → una sola bandera después del apellido");
 igual(tipear("Carlos ", dicc), "Carlos 🇪🇸 ", "Carlos → España");
 igual(tipear("Perez ", dicc), "Perez 🇲🇽 ", "Perez sin acento → México");

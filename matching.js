@@ -17,6 +17,9 @@
 // Apodos que SÍ están en la lista pero no deben activar bandera si van solos.
 const ALIAS_AMBIGUOS = new Set(["chili", "nano"]);
 
+// Palabras especiales que insertan un emoji distinto a una bandera.
+const PALABRAS_CORAZON = new Set(["mclaren"]);
+
 // Primera palabra de un alias compuesto que no queremos tratar como nombre.
 const ALIAS_NOMBRE_IGNORAR = new Set(["mad", "magic", "danny"]);
 
@@ -206,6 +209,10 @@ function analizarTexto(texto, dicc) {
   if (!palabra || esBanderaEmoji(palabra)) return null;
 
   const clave = normalizar(palabra);
+  if (PALABRAS_CORAZON.has(clave)) {
+    return { accion: "insertar", bandera: "🧡" };
+  }
+
   const pilotoApellido = dicc.porApellido.get(clave);
   if (pilotoApellido) {
     const prev = palabraAnterior(trozo.antes);
