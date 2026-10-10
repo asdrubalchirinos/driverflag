@@ -7,6 +7,7 @@
  * Cambia esta constante si quieres usarlo con otra cuenta:
  */
 const CUENTA_PERMITIDA = "maquinasypilotos";
+const VERSION = "1.0.3";
 
 /**
  * Cómo detectamos la cuenta (y sus límites)
@@ -35,6 +36,16 @@ function extensionViva() {
     return typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
   } catch (e) {
     return false;
+  }
+}
+
+// Hay que LEER lastError en el callback. Si no, Chrome escribe
+// "content.js:87 (anonymous function)" en la tarjeta de errores.
+function hayErrorChrome() {
+  try {
+    return !!(chrome.runtime && chrome.runtime.lastError);
+  } catch (e) {
+    return true;
   }
 }
 
@@ -149,13 +160,19 @@ function detectarCuentaActual() {
 function guardarEstado() {
   if (!extensionViva() || !chrome.storage || !chrome.storage.local) return;
   try {
-    chrome.storage.local.set({
-      paginaX: true,
-      cuentaDetectada: cuentaDetectada,
-      cuentaPermitida: CUENTA_PERMITIDA,
-      activado: activado,
-      actualizado: Date.now()
-    });
+    chrome.storage.local.set(
+      {
+        paginaX: true,
+        cuentaDetectada: cuentaDetectada,
+        cuentaPermitida: CUENTA_PERMITIDA,
+        activado: activado,
+        version: VERSION,
+        actualizado: Date.now()
+      },
+      function () {
+        hayErrorChrome();
+      }
+    );
   } catch (e) {
     log("no pude guardar el estado:", e && e.message ? e.message : e);
   }
@@ -262,7 +279,7 @@ function cargarPreferencias() {
   }
   try {
     chrome.storage.local.get({ activado: true }, function (datos) {
-      if (!extensionViva()) return;
+      if (hayErrorChrome() || !extensionViva()) return;
       activado = !datos || datos.activado !== false;
       guardarEstado();
     });
@@ -301,39 +318,50 @@ function escucharPopup() {
 
 function vigilarCambiosDeCuenta() {
   const chequear = seguro(refrescarCuenta);
+  let obs = null;
+  let intervalo = null;
+
+  function pararSiMurio() {
+    if (extensionViva()) return false;
+    if (obs) obs.disconnect();
+    if (intervalo) clearInterval(intervalo);
+    clearTimeout(temporizadorCuenta);
+    return true;
+  }
+
   chequear();
   if (!cuentaDetectada) {
     log("aún no veo la cuenta; seguiré mirando la página");
   }
 
   function programarChequeo() {
-    if (!extensionViva()) return;
+    if (pararSiMurio()) return;
     clearTimeout(temporizadorCuenta);
     temporizadorCuenta = setTimeout(chequear, 250);
   }
 
-  const obs = new MutationObserver(seguro(programarChequeo));
+  obs = new MutationObserver(seguro(programarChequeo));
   if (document.body) {
     obs.observe(document.body, { childList: true, subtree: true });
   }
 
   // X carga la barra un poco después. Si no encontramos la cuenta al
   // arrancar, este intervalo la pillará cuando aparezca.
-  setInterval(function () {
-    if (!extensionViva()) return;
+  intervalo = setInterval(function () {
+    if (pararSiMurio()) return;
     chequear();
   }, 2000);
 
   document.addEventListener(
     "visibilitychange",
     seguro(function () {
-      if (!document.hidden) chequear();
+      if (!document.hidden && !pararSiMurio()) chequear();
     })
   );
 }
 
 function arrancar() {
-  log("arrancó en " + location.href);
+  log("v" + VERSION + " arrancó en " + location.href);
   cargarPreferencias();
   guardarEstado();
   escucharPopup();
