@@ -95,6 +95,7 @@ Cuando cambias de cuenta en X, vuelve a mirar. Si no es @maquinasypilotos, no ha
    - `no inserto: la cuenta no es @maquinasypilotos` → estás con otra cuenta.
    - `inserción: …` → acaba de poner una bandera.
    - Si no hay ningún `[DriverFlag]`, el script no corre: revisa que la extensión esté activa y que la URL sea `https://x.com/...`.
+   - Si Chrome muestra `content.js:87 (anonymous function)`, recarga DriverFlag y luego la pestaña de x.com. Suele pasar si recargaste la extensión y la pestaña se quedó con el script viejo.
 
 ## Cómo probar que la lógica funciona
 

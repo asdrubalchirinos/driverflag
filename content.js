@@ -30,6 +30,25 @@ function log() {
   console.log.apply(console, args);
 }
 
+function extensionViva() {
+  try {
+    return typeof chrome !== "undefined" && !!(chrome.runtime && chrome.runtime.id);
+  } catch (e) {
+    return false;
+  }
+}
+
+function seguro(fn) {
+  return function () {
+    try {
+      return fn.apply(null, arguments);
+    } catch (e) {
+      log("error:", e && e.message ? e.message : e);
+      return undefined;
+    }
+  };
+}
+
 const DICC = construirDiccionarios(PILOTOS);
 
 let activado = true;
@@ -85,48 +104,61 @@ function handleDesdeAvatar(raiz) {
 }
 
 function detectarCuentaActual() {
-  const switcher = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]');
-  if (switcher) {
-    const porAvatar = handleDesdeAvatar(switcher);
-    if (porAvatar) return porAvatar;
+  try {
+    const switcher = document.querySelector('[data-testid="SideNav_AccountSwitcher_Button"]');
+    if (switcher) {
+      const porAvatar = handleDesdeAvatar(switcher);
+      if (porAvatar) return porAvatar;
 
-    const porLabel = primerHandleEnTexto(switcher.getAttribute("aria-label"));
-    if (porLabel) return porLabel;
+      const porLabel = primerHandleEnTexto(switcher.getAttribute("aria-label"));
+      if (porLabel) return porLabel;
 
-    const porTexto = primerHandleEnTexto(switcher.textContent);
-    if (porTexto) return porTexto;
-  }
-
-  const perfil = document.querySelector(
-    'a[data-testid="AppTabBar_Profile_Link"], a[aria-label="Profile"], a[aria-label="Perfil"]'
-  );
-  if (perfil) {
-    const desdeHref = handleDesdeHref(perfil.getAttribute("href") || "");
-    if (desdeHref) return desdeHref;
-  }
-
-  const banner = document.querySelector('header[role="banner"]');
-  if (banner) {
-    const avatares = banner.querySelectorAll('[data-testid^="UserAvatar-Container-"]');
-    if (avatares.length) {
-      const ultimo = avatares[avatares.length - 1];
-      const nombre = (ultimo.getAttribute("data-testid") || "").replace("UserAvatar-Container-", "");
-      if (nombre && nombre !== "unknown") return nombre;
+      // No leemos switcher.textContent entero: X reescribe el DOM y a veces
+      // eso lanza un error (Chrome lo muestra como content.js:87).
+      const spans = switcher.querySelectorAll("span, a");
+      for (let i = 0; i < spans.length; i++) {
+        const porSpan = primerHandleEnTexto(spans[i].getAttribute("aria-label") || "");
+        if (porSpan) return porSpan;
+      }
     }
+
+    const perfil = document.querySelector(
+      'a[data-testid="AppTabBar_Profile_Link"], a[aria-label="Profile"], a[aria-label="Perfil"]'
+    );
+    if (perfil) {
+      const desdeHref = handleDesdeHref(perfil.getAttribute("href") || "");
+      if (desdeHref) return desdeHref;
+    }
+
+    const banner = document.querySelector('header[role="banner"]');
+    if (banner) {
+      const avatares = banner.querySelectorAll('[data-testid^="UserAvatar-Container-"]');
+      if (avatares.length) {
+        const ultimo = avatares[avatares.length - 1];
+        const nombre = (ultimo.getAttribute("data-testid") || "").replace("UserAvatar-Container-", "");
+        if (nombre && nombre !== "unknown") return nombre;
+      }
+    }
+  } catch (e) {
+    log("error al leer la cuenta:", e && e.message ? e.message : e);
   }
 
   return null;
 }
 
 function guardarEstado() {
-  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) return;
-  chrome.storage.local.set({
-    paginaX: true,
-    cuentaDetectada: cuentaDetectada,
-    cuentaPermitida: CUENTA_PERMITIDA,
-    activado: activado,
-    actualizado: Date.now()
-  });
+  if (!extensionViva() || !chrome.storage || !chrome.storage.local) return;
+  try {
+    chrome.storage.local.set({
+      paginaX: true,
+      cuentaDetectada: cuentaDetectada,
+      cuentaPermitida: CUENTA_PERMITIDA,
+      activado: activado,
+      actualizado: Date.now()
+    });
+  } catch (e) {
+    log("no pude guardar el estado:", e && e.message ? e.message : e);
+  }
 }
 
 function refrescarCuenta() {
@@ -224,59 +256,80 @@ function alEscribir(ev) {
 }
 
 function cargarPreferencias() {
-  if (typeof chrome === "undefined" || !chrome.storage || !chrome.storage.local) {
+  if (!extensionViva() || !chrome.storage || !chrome.storage.local) {
     activado = true;
     return;
   }
-  chrome.storage.local.get({ activado: true }, function (datos) {
-    activado = datos.activado !== false;
-    guardarEstado();
-  });
-  chrome.storage.onChanged.addListener(function (cambios, area) {
-    if (area !== "local" || !cambios.activado) return;
-    activado = cambios.activado.newValue !== false;
-    log(activado ? "activado" : "apagado");
-  });
+  try {
+    chrome.storage.local.get({ activado: true }, function (datos) {
+      if (!extensionViva()) return;
+      activado = !datos || datos.activado !== false;
+      guardarEstado();
+    });
+    chrome.storage.onChanged.addListener(function (cambios, area) {
+      if (!extensionViva() || area !== "local" || !cambios.activado) return;
+      activado = cambios.activado.newValue !== false;
+      log(activado ? "activado" : "apagado");
+    });
+  } catch (e) {
+    log("error al leer preferencias:", e && e.message ? e.message : e);
+  }
 }
 
 function escucharPopup() {
-  if (typeof chrome === "undefined" || !chrome.runtime || !chrome.runtime.onMessage) return;
-  chrome.runtime.onMessage.addListener(function (mensaje, _sender, responder) {
-    if (!mensaje || mensaje.tipo !== "estado") return;
-    refrescarCuenta();
-    responder({
-      paginaX: true,
-      cuenta: cuentaDetectada,
-      permitida: CUENTA_PERMITIDA,
-      coincide: esCuentaCorrecta(),
-      activado: activado
+  if (!extensionViva() || !chrome.runtime.onMessage) return;
+  try {
+    chrome.runtime.onMessage.addListener(function (mensaje, _sender, responder) {
+      if (!mensaje || mensaje.tipo !== "estado") return;
+      refrescarCuenta();
+      try {
+        responder({
+          paginaX: true,
+          cuenta: cuentaDetectada,
+          permitida: CUENTA_PERMITIDA,
+          coincide: esCuentaCorrecta(),
+          activado: activado
+        });
+      } catch (e) {
+        // El popup se cerró antes de recibir la respuesta.
+      }
     });
-  });
+  } catch (e) {
+    log("error al escuchar el popup:", e && e.message ? e.message : e);
+  }
 }
 
 function vigilarCambiosDeCuenta() {
-  refrescarCuenta();
+  const chequear = seguro(refrescarCuenta);
+  chequear();
   if (!cuentaDetectada) {
     log("aún no veo la cuenta; seguiré mirando la página");
   }
 
   function programarChequeo() {
+    if (!extensionViva()) return;
     clearTimeout(temporizadorCuenta);
-    temporizadorCuenta = setTimeout(refrescarCuenta, 250);
+    temporizadorCuenta = setTimeout(chequear, 250);
   }
 
-  const obs = new MutationObserver(programarChequeo);
+  const obs = new MutationObserver(seguro(programarChequeo));
   if (document.body) {
-    obs.observe(document.body, { childList: true, subtree: true, attributes: true });
+    obs.observe(document.body, { childList: true, subtree: true });
   }
 
   // X carga la barra un poco después. Si no encontramos la cuenta al
   // arrancar, este intervalo la pillará cuando aparezca.
-  setInterval(refrescarCuenta, 2000);
+  setInterval(function () {
+    if (!extensionViva()) return;
+    chequear();
+  }, 2000);
 
-  document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) refrescarCuenta();
-  });
+  document.addEventListener(
+    "visibilitychange",
+    seguro(function () {
+      if (!document.hidden) chequear();
+    })
+  );
 }
 
 function arrancar() {
@@ -285,7 +338,7 @@ function arrancar() {
   guardarEstado();
   escucharPopup();
   vigilarCambiosDeCuenta();
-  document.addEventListener("input", alEscribir, true);
+  document.addEventListener("input", seguro(alEscribir), true);
 }
 
 try {
