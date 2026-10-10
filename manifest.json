@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DriverFlag",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Inserta la bandera del país después del nombre de un piloto de F1 al escribir un post en X.",
   "action": {
     "default_popup": "popup.html",

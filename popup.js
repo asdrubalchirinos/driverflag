@@ -60,6 +60,7 @@ function leerEstado() {
       cuentaPermitida: "maquinasypilotos"
     },
     function (datos) {
+      if (chrome.runtime.lastError) return;
       pintar(datos);
     }
   );
@@ -67,6 +68,7 @@ function leerEstado() {
 
 toggle.addEventListener("change", function () {
   chrome.storage.local.set({ activado: toggle.checked }, function () {
+    if (chrome.runtime.lastError) return;
     leerEstado();
   });
 });
