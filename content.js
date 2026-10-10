@@ -6,7 +6,7 @@
  * ----------------
  * Cambia esta constante si quieres usarlo con otra cuenta:
  */
-const CUENTA_PERMITIDA = "maquinasypilotos";
+const CUENTA_PERMITIDA = "maquinaspilotos";
 const VERSION = "1.0.3";
 
 /**
