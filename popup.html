@@ -22,6 +22,42 @@
     <p id="estado" class="estado">Leyendo el estado…</p>
     <p id="detalle" class="detalle"></p>
 
+    <section class="cuentas" aria-labelledby="titulo-cuentas">
+      <p id="titulo-cuentas" class="titulo-seccion">En qué cuentas funciona</p>
+
+      <label class="opcion">
+        <input type="radio" name="modo" value="todas" id="modo-todas" />
+        <span>Todas mis cuentas</span>
+      </label>
+      <label class="opcion">
+        <input type="radio" name="modo" value="lista" id="modo-lista" />
+        <span>Solo estas cuentas</span>
+      </label>
+
+      <div id="bloque-lista" hidden>
+        <ul id="lista-cuentas"></ul>
+        <p id="lista-vacia" class="detalle">Aún no hay ninguna. Añade un usuario de X.</p>
+
+        <div class="fila-agregar">
+          <input
+            type="text"
+            id="nuevo-handle"
+            placeholder="@usuario"
+            maxlength="21"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="btn-agregar">Agregar</button>
+        </div>
+        <p id="error-handle" class="error" hidden></p>
+
+        <button type="button" id="btn-cuenta-actual" class="secundario">
+          Agregar la cuenta actual
+        </button>
+      </div>
+    </section>
+
+    <script src="cuentas.js"></script>
     <script src="popup.js"></script>
   </body>
 </html>

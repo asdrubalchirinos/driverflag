@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  width: 280px;
+  width: 300px;
   padding: 14px 16px 16px;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   font-size: 14px;
@@ -71,4 +71,129 @@ h1 {
 
 .apagado {
   color: #c5d0cb;
+}
+
+.cuentas {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #2a4a3c;
+}
+
+.titulo-seccion {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #9bb5aa;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.opcion:hover {
+  background: #1a3329;
+}
+
+.opcion input {
+  margin: 0;
+}
+
+#bloque-lista {
+  margin-top: 8px;
+}
+
+#lista-cuentas {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+#lista-cuentas li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: #1a3329;
+}
+
+#lista-cuentas .handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fila-agregar {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fila-agregar input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #2a4a3c;
+  border-radius: 6px;
+  background: #0c1b15;
+  color: #e8eef0;
+  font-size: 13px;
+}
+
+.fila-agregar input:focus {
+  outline: 1px solid #3d8b66;
+}
+
+button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #2d6a4f;
+  color: #e8eef0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #35835f;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.secundario {
+  width: 100%;
+  margin-top: 8px;
+  background: #1a3329;
+}
+
+button.secundario:hover:not(:disabled) {
+  background: #224536;
+}
+
+button.quitar {
+  padding: 2px 6px;
+  background: transparent;
+  color: #9bb5aa;
+  font-size: 12px;
+}
+
+button.quitar:hover:not(:disabled) {
+  background: transparent;
+  color: #e8eef0;
+}
+
+.error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #f0d27a;
+  line-height: 1.4;
 }

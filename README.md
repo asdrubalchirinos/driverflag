@@ -1,14 +1,14 @@
 # DriverFlag
 
-Extensión de Chrome (Manifest V3) para la cuenta **@maquinasypilotos**.
-
-Cuando escribes un post en [X](https://x.com), si terminas el nombre de un piloto de F1 (con un espacio, una coma, un punto…), se inserta sola la bandera de su país:
+Extensión de Chrome (Manifest V3) que pone la bandera del país después del nombre de un piloto de F1 mientras escribes un post en [X](https://x.com).
 
 `Hamilton ` → `Hamilton 🇬🇧 `
 
 Si escribes nombre y apellido (`Lewis Hamilton`), deja **una sola** bandera, después del apellido.
 
-No llama a internet, no tiene anuncios y solo pide el permiso `storage` para recordar si la dejaste encendida o apagada.
+Por defecto funciona en **todas tus cuentas** de X. Si tienes varias y solo quieres banderas en algunas, lo eliges en el popup.
+
+No llama a internet, no tiene anuncios y solo pide el permiso `storage` (para recordar si está encendida y en qué cuentas).
 
 ## Cómo instalarla en Chrome
 
@@ -16,7 +16,7 @@ No llama a internet, no tiene anuncios y solo pide el permiso `storage` para rec
 2. Arriba a la derecha, activa **Modo de desarrollador**.
 3. Pulsa **Cargar descomprimida**.
 4. Elige **esta carpeta** (la que tiene el archivo `manifest.json`).
-5. Entra en [x.com](https://x.com) con la cuenta **@maquinasypilotos**.
+5. Entra en [x.com](https://x.com) con la cuenta que quieras.
 6. Escribe un post de prueba: `Hamilton ` y debería aparecer 🇬🇧.
 
 Si actualizas los archivos (o te dicen que recargues):
@@ -31,9 +31,26 @@ Sin recargar la pestaña de X, Chrome sigue usando el script viejo.
 ## Cómo se usa
 
 - El interruptor del icono de la extensión (arriba a la derecha en Chrome) enciende o apaga las banderas.
-- Ahí mismo verás si detectó tu cuenta de X y si está activa.
+- Ahí mismo verás la cuenta de X que detectó y si está activa para esa cuenta.
 - Funciona en la caja principal, respuestas, citas y la ventana de “Publicar”.
 - `Ctrl+Z` (o `Cmd+Z` en Mac) justo después de una bandera la quita.
+
+## Cómo elegir las cuentas
+
+Abre el popup (icono de DriverFlag):
+
+- **Todas mis cuentas** (viene así de fábrica): pone banderas en cualquier cuenta con la que estés logueado.
+- **Solo estas cuentas**: solo actúa con los usuarios que añadas a la lista.
+
+En la lista puedes:
+
+- Escribir el usuario con o sin `@` (da igual mayúsculas) y pulsar **Agregar**.
+- Pulsar **Agregar la cuenta actual** para meter la que DriverFlag acaba de ver en X.
+- Pulsar **Quitar** junto a una cuenta para sacarla.
+
+Si eliges “Solo estas cuentas” y la lista está vacía, no pondrá banderas.
+
+Los ajustes se guardan en tu Chrome (`chrome.storage.sync`) y viajan con tu sesión si tienes sincronización activada.
 
 ## Cómo actualizar la lista de pilotos
 
@@ -61,16 +78,6 @@ No hace falta escribir la versión sin acento: `Perez` ya coincide con `Pérez`.
 
 La lista titular sigue la entry list de la FIA del GP de Singapur 2026. Detalles en `notas.md`.
 
-## Cómo cambiar la cuenta
-
-Abre **`content.js`**. La primera constante es:
-
-```js
-const CUENTA_PERMITIDA = "maquinasypilotos";
-```
-
-Cámbiala por el usuario de X que quieras (sin la `@`) y recarga la extensión.
-
 ## Cómo detecta la cuenta (y cuándo falla)
 
 X no nos dice oficialmente quién está logueado. DriverFlag mira el DOM de la página:
@@ -82,22 +89,25 @@ Si no encuentra ninguno (ventana muy estrecha, X cambió el diseño, aún no car
 
 El popup no mira la URL de la pestaña (eso pediría más permisos). El script de x.com escribe en `chrome.storage` si está en X y qué cuenta vio; el popup solo lee eso.
 
-Cuando cambias de cuenta en X, vuelve a mirar. Si no es @maquinasypilotos, no hace nada.
+Cuando cambias de cuenta en X, vuelve a mirar. Si estás en “Solo estas cuentas” y esa no está en la lista, no hace nada.
 
 ## Si el popup dice que no está en X, o no salen banderas
 
 1. `chrome://extensions` → recargar DriverFlag.
 2. Recarga la pestaña de x.com.
-3. Abre el popup otra vez: debería decir “Activo para @maquinasypilotos” o, si no ve la cuenta, un aviso distinto.
+3. Abre el popup otra vez: debería decir “Activo para @tuusuario” o, si no ve la cuenta, un aviso distinto.
 4. Consola de x.com (Inspeccionar → Consola), busca `[DriverFlag]`:
    - `arrancó en …` → el script está inyectado.
+   - `cuentas: todas mis cuentas` o `cuentas: solo @…` → leyó tus ajustes.
    - `cuenta detectada: @… (activa)` → debería insertar banderas.
-   - `no inserto: la cuenta no es @maquinasypilotos` → estás con otra cuenta.
+   - `no inserto: @… no está en la lista` → esa cuenta no está permitida. Añádela en el popup o cambia a “Todas mis cuentas”.
+   - `no inserto: la lista de cuentas está vacía` → elegiste “Solo estas cuentas” sin añadir ninguna.
+   - `no inserto: no veo la cuenta` → aún no pudo leer quién eres.
    - `inserción: …` → acaba de poner una bandera.
    - Si no hay ningún `[DriverFlag]`, el script no corre: revisa que la extensión esté activa y que la URL sea `https://x.com/...`.
-   - En la tarjeta de DriverFlag debe decir versión **1.0.3**. Si dice 1.0.0 / 1.0.1 / 1.0.2, recarga la extensión.
+   - En la tarjeta de DriverFlag debe decir versión **1.0.4**. Si dice 1.0.0 / 1.0.1 / 1.0.2 / 1.0.3, recarga la extensión.
    - Si hay un botón rojo **Errores**, ábrelo y pulsa **Borrar todo** (pueden ser avisos viejos).
-   - Si Chrome muestra `content.js:87 (anonymous function)`, recarga DriverFlag, recarga x.com y borra esos errores. En la consola debe salir `[DriverFlag] v1.0.3 arrancó…`.
+   - Si Chrome muestra `content.js:87 (anonymous function)`, recarga DriverFlag, recarga x.com y borra esos errores. En la consola debe salir `[DriverFlag] v1.0.4 arrancó…`.
 
 ## Cómo probar que la lógica funciona
 
@@ -105,6 +115,7 @@ En una terminal, dentro de esta carpeta:
 
 ```bash
 node tests/matching.test.js
+node tests/cuentas.test.js
 ```
 
 No hace falta instalar nada. Comprueba cosas como:
@@ -115,10 +126,13 @@ No hace falta instalar nada. Comprueba cosas como:
 - `Perez` / `Pérez` / `Checo` → 🇲🇽
 - no duplica banderas
 - `Maximo` no coincide con Max
+- “Todas mis cuentas” acepta cualquier handle detectado
+- “Solo estas cuentas” acepta con o sin `@`, da igual mayúsculas
+- una lista vacía no deja pasar a nadie
 
 ## Limitaciones conocidas
 
-- Solo actúa si puede leer la cuenta y es @maquinasypilotos.
+- Solo actúa si puede leer la cuenta de X. Si eliges “Solo estas cuentas”, además tiene que estar en la lista.
 - Hay que **terminar** la palabra (espacio, coma, punto, intro…). Si publicas `Hamilton` sin nada detrás, no pone bandera.
 - X puede cambiar el editor. La inserción usa `document.execCommand('insertText')` para que X lo trate como texto tuyo (contador, cursor, botón Publicar). Si un día deja de funcionar, ese es el sitio a revisar (`insertar.js`).
 - Nombres comunes en español (`Carlos`, `Franco`, `Max`…) pondrán bandera aunque no hables de F1. Es la regla acordada para los titulares.
@@ -135,6 +149,7 @@ No hace falta instalar nada. Comprueba cosas como:
 | `pilotos.js`   | Lista de pilotos (edita aquí)               |
 | `matching.js`  | Cómo se reconoce un nombre                  |
 | `insertar.js`  | Cómo se escribe la bandera en la caja de X  |
-| `content.js`   | Se engancha a x.com; aquí está la cuenta    |
-| `popup.html`   | Ventanita del icono                         |
+| `cuentas.js`   | Qué cuentas de X pueden usar la extensión   |
+| `content.js`   | Se engancha a x.com                         |
+| `popup.html`   | Ventanita del icono (on/off y cuentas)      |
 | `notas.md`     | Fuentes de la lista 2026                    |
