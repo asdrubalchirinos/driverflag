@@ -2,12 +2,14 @@
  * Content script de DriverFlag.
  * Solo corre en x.com / twitter.com (lo dice el manifest).
  *
- * Cuenta permitida
- * ----------------
- * Cambia esta constante si quieres usarlo con otra cuenta:
+ * Qué cuentas
+ * -----------
+ * Ya no hay un usuario fijo. El popup guarda en chrome.storage.sync:
+ *   modoCuentas: "todas" (por defecto) o "lista"
+ *   cuentasPermitidas: handles sin @
+ * Si no vemos la cuenta en la página, no insertamos nada.
  */
-const CUENTA_PERMITIDA = "maquinaspilotos";
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 /**
  * Cómo detectamos la cuenta (y sus límites)
@@ -63,15 +65,13 @@ function seguro(fn) {
 const DICC = construirDiccionarios(PILOTOS);
 
 let activado = true;
+let modoCuentas = "todas";
+let cuentasPermitidas = [];
+let ajustesListos = false;
 let cuentaDetectada = null;
 let ocupado = false;
 let avisoCuenta = "";
 let temporizadorCuenta = null;
-
-function normalizarHandle(valor) {
-  if (!valor) return null;
-  return String(valor).replace(/^@/, "").trim().toLowerCase();
-}
 
 function primerHandleEnTexto(texto) {
   if (!texto) return null;
@@ -164,7 +164,9 @@ function guardarEstado() {
       {
         paginaX: true,
         cuentaDetectada: cuentaDetectada,
-        cuentaPermitida: CUENTA_PERMITIDA,
+        modoCuentas: modoCuentas,
+        cuentasPermitidas: cuentasPermitidas,
+        cuentaActiva: esCuentaCorrecta(),
         activado: activado,
         version: VERSION,
         actualizado: Date.now()
@@ -188,8 +190,8 @@ function refrescarCuenta() {
   avisoCuenta = "";
 
   if (handle) {
-    const ok = normalizarHandle(handle) === normalizarHandle(CUENTA_PERMITIDA);
-    log("cuenta detectada: @" + handle + (ok ? " (activa)" : " (no es @" + CUENTA_PERMITIDA + ")"));
+    const ok = esCuentaCorrecta();
+    log("cuenta detectada: @" + handle + (ok ? " (activa)" : " (" + motivoNoActiva() + ")"));
   } else if (anterior) {
     log("ya no veo la cuenta");
   } else {
@@ -198,7 +200,26 @@ function refrescarCuenta() {
 }
 
 function esCuentaCorrecta() {
-  return normalizarHandle(cuentaDetectada) === normalizarHandle(CUENTA_PERMITIDA);
+  return cuentaEstaPermitida(cuentaDetectada, modoCuentas, cuentasPermitidas);
+}
+
+function motivoNoActiva() {
+  if (!cuentaDetectada) return "no veo la cuenta";
+  if (modoCuentasValido(modoCuentas) === "lista") {
+    if (!limpiarListaCuentas(cuentasPermitidas).length) {
+      return "lista vacía";
+    }
+    return "no está en la lista";
+  }
+  return "no permitida";
+}
+
+function textoModoCuentas() {
+  if (modoCuentas === "lista") {
+    if (!cuentasPermitidas.length) return "solo (lista vacía)";
+    return "solo " + cuentasPermitidas.map(function (h) { return "@" + h; }).join(", ");
+  }
+  return "todas mis cuentas";
 }
 
 /**
@@ -239,12 +260,24 @@ function cajaDesdeEvento(ev) {
 function aplicarEnCaja(caja) {
   if (ocupado || !activado) return;
 
+  if (!ajustesListos) return;
+
   refrescarCuenta();
   if (!esCuentaCorrecta()) {
-    const clave = cuentaDetectada || "(ninguna)";
+    const clave = (cuentaDetectada || "(ninguna)") + "|" + modoCuentas + "|" + cuentasPermitidas.join(",");
     if (avisoCuenta !== clave) {
       avisoCuenta = clave;
-      log("no inserto: la cuenta no es @" + CUENTA_PERMITIDA + " (detectada: " + clave + ")");
+      if (!cuentaDetectada) {
+        log("no inserto: no veo la cuenta");
+      } else if (modoCuentasValido(modoCuentas) === "lista") {
+        if (!limpiarListaCuentas(cuentasPermitidas).length) {
+          log("no inserto: la lista de cuentas está vacía");
+        } else {
+          log("no inserto: @" + cuentaDetectada + " no está en la lista");
+        }
+      } else {
+        log("no inserto: la cuenta no está permitida (detectada: " + (cuentaDetectada || "(ninguna)") + ")");
+      }
     }
     return;
   }
@@ -272,23 +305,64 @@ function alEscribir(ev) {
   aplicarEnCaja(caja);
 }
 
+function aplicarAjustesCuentas(datos) {
+  modoCuentas = modoCuentasValido(datos && datos.modoCuentas);
+  cuentasPermitidas = limpiarListaCuentas(datos && datos.cuentasPermitidas);
+  ajustesListos = true;
+}
+
 function cargarPreferencias() {
-  if (!extensionViva() || !chrome.storage || !chrome.storage.local) {
+  if (!extensionViva() || !chrome.storage) {
     activado = true;
+    ajustesListos = true;
     return;
   }
   try {
-    chrome.storage.local.get({ activado: true }, function (datos) {
-      if (hayErrorChrome() || !extensionViva()) return;
-      activado = !datos || datos.activado !== false;
-      guardarEstado();
-    });
+    if (chrome.storage.local) {
+      chrome.storage.local.get({ activado: true }, function (datos) {
+        if (hayErrorChrome() || !extensionViva()) return;
+        activado = !datos || datos.activado !== false;
+        guardarEstado();
+      });
+    }
+
+    if (chrome.storage.sync) {
+      chrome.storage.sync.get({ modoCuentas: "todas", cuentasPermitidas: [] }, function (datos) {
+        if (hayErrorChrome() || !extensionViva()) {
+          ajustesListos = true;
+          return;
+        }
+        aplicarAjustesCuentas(datos);
+        log("cuentas: " + textoModoCuentas());
+        guardarEstado();
+      });
+    } else {
+      ajustesListos = true;
+    }
+
     chrome.storage.onChanged.addListener(function (cambios, area) {
-      if (!extensionViva() || area !== "local" || !cambios.activado) return;
-      activado = cambios.activado.newValue !== false;
-      log(activado ? "activado" : "apagado");
+      if (!extensionViva()) return;
+      if (area === "local" && cambios.activado) {
+        activado = cambios.activado.newValue !== false;
+        log(activado ? "activado" : "apagado");
+      }
+      if (area === "sync" && (cambios.modoCuentas || cambios.cuentasPermitidas)) {
+        if (cambios.modoCuentas) {
+          modoCuentas = modoCuentasValido(cambios.modoCuentas.newValue);
+        }
+        if (cambios.cuentasPermitidas) {
+          cuentasPermitidas = limpiarListaCuentas(cambios.cuentasPermitidas.newValue);
+        }
+        avisoCuenta = "";
+        log("cuentas: " + textoModoCuentas());
+        if (cuentaDetectada) {
+          log("cuenta detectada: @" + cuentaDetectada + (esCuentaCorrecta() ? " (activa)" : " (" + motivoNoActiva() + ")"));
+        }
+        guardarEstado();
+      }
     });
   } catch (e) {
+    ajustesListos = true;
     log("error al leer preferencias:", e && e.message ? e.message : e);
   }
 }
@@ -303,7 +377,8 @@ function escucharPopup() {
         responder({
           paginaX: true,
           cuenta: cuentaDetectada,
-          permitida: CUENTA_PERMITIDA,
+          modoCuentas: modoCuentas,
+          cuentasPermitidas: cuentasPermitidas,
           coincide: esCuentaCorrecta(),
           activado: activado
         });
